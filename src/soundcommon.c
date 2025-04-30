@@ -1,3 +1,7 @@
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libavutil/avutil.h>
+
 #include "soundcommon.h"
 #include "playerops.h"
 
@@ -661,6 +665,86 @@ int prepareNextOpusDecoder(char *filepath)
         return 0;
 }
 
+int prepareNextWebmDecoder(char *filepath)
+{
+        AVFormatContext *pformat_context = avformat_alloc_context();
+        if (avformat_open_input(&pformat_context,filepath,NULL,NULL) != 0)
+        {
+                return -1;
+        }
+
+        if (avformat_find_stream_info(pformat_context, NULL) < 0)
+        {
+                return -1;
+        }
+
+        int audio_stream_idx = -1;
+        for (int i = 0; pformat_context->nb_streams; i++)
+        {
+                if (pformat_context->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO)
+                {
+                        audio_stream_idx = i;
+                        break;
+                }
+        }
+
+        if (audio_stream_idx == -1)
+        {
+                return -1;
+        }
+
+        codec = avcodec_find_decoder(audioStream->codecpar->codec_id);
+        codec_context = avcodec_alloc_context3(codec);
+
+        avcodec_parameters_to_context(codecContext, audioStream->codecpar);
+        avcodec_open2(codecContext, codec, NULL)
+
+        ma_libopus *currentDecoder;
+
+        if (opusDecoderIndex == -1) {
+                currentDecoder = getFirstOpusDecoder();
+        } else {
+                currentDecoder = opusDecoders[opusDecoderIndex];
+        }
+
+        ma_uint32 sampleRate = codecContext->sample_rate;
+        ma_uint32 channels = codecContext->channels;
+        ma_format format = (codecContext->sample_fmt == AV_SAMPLE_FMT_S16) ? MA_FORMAT_S16 : MA_FORMAT_FLOAT;
+        ma_channel channelMap[MA_MAX_CHANNELS];
+        for (int i = 0; i < codecContext->channels; i++) {
+                channelMap[i] = i;
+        }
+
+        uninitPreviousDecoder((void **)opusDecoders, opusDecoderIndex, (uninit_func)uninitOpusDecoder);
+
+        ma_libopus *decoder = (ma_libopus *)malloc(sizeof(ma_libopus));
+        if (!decoder) {
+                avcodec_free_context(&codecContext);
+                avformat_close_input(&formatContext);
+                return -1;
+        }
+
+        decoder->format = format;
+        decoder->onRead = ma_libopus_read_pcm_frames_wrapper;
+        decoder->onSeek = ma_libopus_seek_to_pcm_frame_wrapper;
+        decoder->onTell = ma_libopus_get_cursor_in_pcm_frames_wrapper;
+
+        decoder->pReadSeekTellUserData = (AudioData *)firstOpusDecoder->pReadSeekTellUserData;
+
+        setNextDecoder((void **)opusDecoders, (void **)&decoder, (void **)&firstOpusDecoder, &opusDecoderIndex, (uninit_func)uninitOpusDecoder);
+
+        if (currentDecoder != NULL && decoder != NULL) {
+                if (!isEOFReached()) {
+                ma_data_source_set_next(currentDecoder, decoder);
+                }
+        }
+
+        avcodec_free_context(&codecContext);
+        avformat_close_input(&formatContext);
+
+        return 0;
+}
+
 int getBufferSize(void)
 {
         return bufSize;
@@ -940,7 +1024,7 @@ bool hasBuiltinDecoder(char *filePath)
 {
         char *extension = strrchr(filePath, '.');
         return (extension != NULL && (strcasecmp(extension, ".wav") == 0 || strcasecmp(extension, ".flac") == 0 ||
-                                      strcasecmp(extension, ".mp3") == 0));
+                                      strcasecmp(extension, ".mp3") == 0 || strcasecmp(extension, ".webm") == 0));
 }
 
 void setCurrentFileIndex(AudioData *pAudioData, int index)

@@ -189,11 +189,15 @@ int prepareNextOpusDecoder(char *filepath);
 
 int prepareNextVorbisDecoder(char *filepath);
 
+int prepareNextWebmDecoder(char *filepath);
+
 int prepareNextM4aDecoder(SongData *songData);
 
 ma_libvorbis *getFirstVorbisDecoder(void);
 
 void getFileInfo(const char* filename, ma_uint32* sampleRate, ma_uint32* channels, ma_format* format);
+
+int processWebmFile(char *filepath);
 
 void initAudioBuffer(void);
 

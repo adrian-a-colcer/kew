@@ -1,3 +1,5 @@
+#include "soundcommon.h"
+#include "utils.h"
 #define MA_EXPERIMENTAL__DATA_LOOPING_AND_CHAINING
 #define MA_NO_ENGINE
 #define MINIAUDIO_IMPLEMENTATION
@@ -74,6 +76,17 @@ ma_result initFirstDatasource(AudioData *pAudioData, UserData *pUserData)
                 ma_data_source_base *base = (ma_data_source_base *)first;
                 base->pCurrent = first;
                 first->pReadSeekTellUserData = pAudioData;
+        }
+        else if (pathEndsWith(filePath, "webm"))
+        {
+                if (processWebmFile() < 0)
+                        return -1;
+
+                int result = prepareNextWebmDecoder(filePath);
+                if (result < 0)
+                        return -1;
+
+
         }
         else if (pathEndsWith(filePath, "m4a") || pathEndsWith(filePath, "aac"))
         {
